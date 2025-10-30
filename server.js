@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 
 const KEY = process.env.GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-pro";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const PORT = process.env.PORT || 8080;
 
 if (!KEY) {
@@ -15,12 +15,23 @@ if (!KEY) {
   process.exit(1);
 }
 
+// Helper function to pick right API version
+function getGeminiUrl(model) {
+  if (model.startsWith("gemini-1")) {
+    return `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${KEY}`;
+  } else if (model.startsWith("gemini-2")) {
+    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${KEY}`;
+  } else {
+    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${KEY}`;
+  }
+}
+
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message;
-    if (!userMessage) return res.status(400).json({ error: "no message" });
+    if (!userMessage) return res.status(400).json({ error: "No message provided." });
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`;
+    const url = getGeminiUrl(MODEL);
 
     const body = {
       contents: [
@@ -46,7 +57,7 @@ app.post("/chat", async (req, res) => {
 
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "No response from Gemini.";
+      "⚠️ No response from Gemini.";
 
     res.json({ reply: text });
   } catch (e) {
@@ -55,6 +66,6 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-app.listen(PORT, () =>
-  console.log(`✅ Gemini backend running on port ${PORT}`)
-);
+app.listen(PORT, () => {
+  console.log(`✅ Gemini backend running on port ${PORT} using model ${MODEL}`);
+});
